@@ -6,22 +6,24 @@ const dishes = require(path.resolve("src/data/dishes-data"));
 // Use this function to assign ID's when necessary
 const nextId = require("../utils/nextId");
 
-
-// // In the src/dishes/dishes.controller.js file, add handlers and middleware functions to 
-// create, read, update, and list dishes. Note that dishes cannot be deleted.
-// TODO: Implement the /dishes handlers needed to make the tests pass
 function list(req, res) {
     res.json({ data: dishes });
 }
 
-function create(req, res) {
+function create(req, res, next) {
     const { data: { name, description, price, image_url } = {} } = req.body;
+    if (!name || !description || price === undefined || price <= 0 || isNaN(price) || !image_url) {
+        return next({
+            status: 400,
+            message: "All fields (name, description, price, image_url) are required.",
+        });
+    }
     const newDish = {
-        id: ++lastDishId,
-        name: name,
-        description: description,
-        price: price,
-        image_url: image_url,
+        id: nextId(),
+        name,
+        description,
+        price,
+        image_url,
     };
     dishes.push(newDish);
     res.status(201).json({ data: newDish });
@@ -29,19 +31,19 @@ function create(req, res) {
 
 function dishExists(req, res, next) {
     const { dishId } = req.params;
-    const foundDish = dishes.find((dish) => dish.id === Number(dishId));
+    const foundDish = dishes.find((dish) => dish.id === dishId);
     if (foundDish) {
         return next();
     }
-    next({
+    next ({
         status: 404,
-        message: `Dish does not exist: ${dishId}`,
-    }); 
+        message: `Dish does not exist: ${dishId}`
+    });
 }
 
 function read(req, res) {
     const { dishId } = req.params;
-    const foundDish = dishes.find((dish) => dish.id === Number(dishId));
+    const foundDish = dishes.find((dish) => dish.id === dishId);
     res.json({ data: foundDish });
 }
 
@@ -57,22 +59,46 @@ function dishIdMatchesBody(req, res, next) {
     });
 }
 
-function update(req, res) {
+function update(req, res, next) {
     const { dishId } = req.params;
-    const foundDish = dishes.find((dish) => dish.id === Number(dishId));
+    const foundDish = dishes.find((dish) => dish.id === dishId);
+    if (!foundDish) {
+        return next({
+            status: 404,
+            message: `Dish not found with ID: ${dishId}`,
+        });
+    }
     const { data: { name, description, price, image_url } = {} } = req.body;
-    if (foundDish) {
-        foundDish.name = name;
-        foundDish.description = description;
-        foundDish.price = price;
-        foundDish.image_url = image_url;
-        res.json({ data: foundDish });
+    if (!name || !description || price === undefined || price <= 0  || isNaN(price) || !image_url) {
+        return next({
+            status: 400,
+            message: "All fields (name, description, price, image_url) are required.",
+        });
+    }
+    foundDish.name = name;
+    foundDish.description = description;
+    foundDish.price = price;
+    foundDish.image_url = image_url;
+    res.json({ data: foundDish });
+}
+
+function destroy(req, res) {
+    // Your logic to delete the dish
+    const { dishId } = req.params;
+    const index = dishes.findIndex((dish) => dish.id === dishId);
+    if (index !== -1) {
+        dishes.splice(index, 1);
+        res.sendStatus(204); // No content, dish successfully deleted
+    } else {
+        res.status(404).json({ error: `Dish with id ${dishId} not found` });
     }
 }
+
 
 module.exports = {
     create,
     list,
     read: [dishExists, read],
     update: [dishExists, dishIdMatchesBody, update],
+    delete: destroy
 };
