@@ -52,22 +52,15 @@ function create(req, res, next) {
     }
 
     // Check if any dish is missing quantity or if any quantity is not an integer
-    for (const dish of dishes) {
-        if (!('quantity' in dish) || dish.quantity === "" || !Number.isInteger(dish.quantity)) {
-            return next({
-                status: 400,
-                message: 'Each dish must have a valid quantity as an integer.',
-            });
-        }
-    }
-
-    // Check if status is missing, empty, or not valid
-    if (!status || status === "" || (status !== "pending" && status !== "preparing" && status !== "out-for-delivery" && status !== "delivered")) {
+for (let index = 0; index < dishes.length; index++) {
+    const dish = dishes[index];
+    if (!dish.quantity || dish.quantity === "" || !Number.isInteger(dish.quantity) || dish.quantity <= 0) {
         return next({
             status: 400,
-            message: 'status must be one of "pending", "preparing", "out-for-delivery", or "delivered".',
+            message: `dish ${index} must have a quantity that is an integer greater than 0`,
         });
     }
+}
 
     // Generate new order ID
     const id = nextId();
@@ -88,11 +81,23 @@ function create(req, res, next) {
     res.status(201).json({ data: newOrder });
 }
 
+function orderIdMatchesBody(req, res, next) {
+    const { orderId } = req.params;
+    const { data: { id } = {} } = req.body;
+    if (!id || id === orderId) {
+        return next();
+    }
+    next({
+        status: 400,
+        message: `Order id does not match route id. Order: ${id}, Route: ${orderId}`,
+    });
+}
 
 function update(req, res, next) {
     const { orderId } = req.params;
     const foundOrder = orders.find((order) => order.id === orderId);
     const { data: { deliverTo, mobileNumber, status, dishes } = {} } = req.body;
+  
 
     // Check if deliverTo is missing or empty
     if (!deliverTo || deliverTo === "") {
@@ -118,15 +123,15 @@ function update(req, res, next) {
         });
     }
 
-    // Check if any dish is missing quantity or if any quantity is not an integer
-    for (const dish of dishes) {
-        if (!('quantity' in dish) || dish.quantity === "" || !Number.isInteger(dish.quantity)) {
-            return next({
-                status: 400,
-                message: 'Each dish must have a valid quantity as an integer.',
-            });
-        }
+for (let index = 0; index < dishes.length; index++) {
+    const dish = dishes[index];
+    if (!dish.quantity || dish.quantity === "" || !Number.isInteger(dish.quantity) || dish.quantity <= 0) {
+        return next({
+            status: 400,
+            message: `dish ${index} must have a quantity that is an integer greater than 0`,
+        });
     }
+}
 
     // Check if status is missing, empty, or not valid
     if (!status || status === "" || (status !== "pending" && status !== "preparing" && status !== "out-for-delivery" && status !== "delivered")) {
@@ -174,6 +179,6 @@ module.exports = {
     list,
     create: [create],
     read: [orderExists, read],
-    update: [orderExists, update],
+    update: [orderExists, orderIdMatchesBody, update],
     delete: [orderExists, destroy],
 };

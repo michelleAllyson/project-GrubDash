@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const controller = require("./dishes.controller");
+const methodNotAllowed = require("../errors/methodNotAllowed");
 
 router.route("/")
     .get(controller.list)
@@ -9,6 +10,6 @@ router.route("/")
 router.route("/:dishId")
     .get(controller.read)
     .put(controller.update)
-    .delete(controller.delete);
+    .all(methodNotAllowed);
 
 module.exports = router;

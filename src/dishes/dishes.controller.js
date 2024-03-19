@@ -50,13 +50,25 @@ function read(req, res) {
 function dishIdMatchesBody(req, res, next) {
     const { dishId } = req.params;
     const { data: { id } = {} } = req.body;
-    if (id === undefined || id === dishId) {
+    if (!id || id === dishId) {
         return next();
     }
     next({
         status: 400,
         message: `Dish id does not match route id. Dish: ${id}, Route: ${dishId}`,
     });
+}
+
+//price value is number
+function dishPriceIsValid(req, res, next) {
+    const { data: { price } = {} } = req.body;
+    if (price && price.length) {
+        return next({
+            status: 400,
+            message: "Dish must have a price that is an integer greater than 0.",
+        });
+    }
+    next();
 }
 
 function update(req, res, next) {
@@ -90,7 +102,7 @@ function destroy(req, res) {
         dishes.splice(index, 1);
         res.sendStatus(204); // No content, dish successfully deleted
     } else {
-        res.status(404).json({ error: `Dish with id ${dishId} not found` });
+        res.status(405).json({ error: `Dish with id ${dishId} not found` });
     }
 }
 
@@ -99,6 +111,6 @@ module.exports = {
     create,
     list,
     read: [dishExists, read],
-    update: [dishExists, dishIdMatchesBody, update],
+    update: [dishExists, dishIdMatchesBody, dishPriceIsValid, update],
     delete: destroy
 };
